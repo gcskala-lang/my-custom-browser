@@ -1,6 +1,7 @@
 {
   "name": "my-custom-browser",
   "version": "1.0.0",
+  "description": "Secure proxy browser web app",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -8,6 +9,6 @@
   "dependencies": {
     "express": "^4.19.2",
     "express-basic-auth": "^1.2.1",
-    "http-proxy-middleware": "^3.0.0"
+    "http-proxy-middleware": "^2.0.6"
   }
 }
