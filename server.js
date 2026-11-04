@@ -5,28 +5,24 @@ const basicAuth = require('express-basic-auth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Track active target host session
-let currentTargetHost = 'https://www.google.com';
-
 // 1. Password Protection
 app.use(basicAuth({
     users: { 'admin': 'MySecretPassword123' },
     challenge: true
 }));
 
-// 2. Main Portal Shell (Single Top Bar + iframe)
+// 2. Main Portal Shell (Clean UI with single address bar and iframe)
 app.get('/', (req, res) => {
-    let targetUrl = req.query.url || currentTargetHost;
+    let targetUrl = req.query.url || 'https://www.google.com';
     if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
         targetUrl = 'https://' + targetUrl;
     }
-    currentTargetHost = new URL(targetUrl).origin;
 
     res.send(`
         <!DOCTYPE html>
         <html>
         <head>
-            <title>My App</title>
+            <title>My Portal</title>
             <style>
                 * { box-sizing: border-box; }
                 body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: system-ui, sans-serif; background: #111; }
@@ -40,7 +36,7 @@ app.get('/', (req, res) => {
         </head>
         <body>
             <div id="nav">
-                <input type="text" id="urlInput" value="${targetUrl}" placeholder="Enter website address (e.g. amazon.com)..." />
+                <input type="text" id="urlInput" value="${targetUrl}" placeholder="Enter website address (e.g. https://wikipedia.org)..." />
                 <button onclick="navigate()">Go</button>
             </div>
             <iframe id="siteFrame" src="/fetch?url=${encodeURIComponent(targetUrl)}"></iframe>
@@ -62,66 +58,40 @@ app.get('/', (req, res) => {
     `);
 });
 
-// 3. Dynamic Proxy Route
+// 3. Dedicated Proxy Route (Loop-Free)
 app.use('/fetch', (req, res, next) => {
-    let target = req.query.url;
-    
-    if (target) {
-        if (!target.startsWith('http://') && !target.startsWith('https://')) {
-            target = 'https://' + target;
-        }
-        try {
-            currentTargetHost = new URL(target).origin;
-        } catch (e) {}
-    } else {
-        target = currentTargetHost;
+    let targetUrl = req.query.url;
+    if (!targetUrl) return res.status(400).send('No target URL provided');
+
+    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+        targetUrl = 'https://' + targetUrl;
     }
 
-    createProxyMiddleware({
-        target: target,
-        changeOrigin: true,
-        router: (req) => {
-            if (req.query && req.query.url) {
-                let u = req.query.url;
-                if (!u.startsWith('http')) u = 'https://' + u;
-                return new URL(u).origin;
+    try {
+        const parsed = new URL(targetUrl);
+        
+        createProxyMiddleware({
+            target: parsed.origin,
+            changeOrigin: true,
+            secure: false,
+            pathRewrite: (path, req) => parsed.pathname + parsed.search,
+            onProxyRes: (proxyRes) => {
+                delete proxyRes.headers['x-frame-options'];
+                delete proxyRes.headers['content-security-policy'];
+                delete proxyRes.headers['frame-ancestors'];
+            },
+            onError: (err, req, res) => {
+                res.status(502).send('Proxy connection failed or site refused connection.');
             }
-            return currentTargetHost;
-        },
-        pathRewrite: (path, req) => {
-            if (req.query && req.query.url) {
-                try {
-                    let parsed = new URL(req.query.url.startsWith('http') ? req.query.url : 'https://' + req.query.url);
-                    return parsed.pathname + parsed.search;
-                } catch(e) {
-                    return '';
-                }
-            }
-            return path.replace(/^\/fetch/, '');
-        },
-        onProxyRes: (proxyRes) => {
-            delete proxyRes.headers['x-frame-options'];
-            delete proxyRes.headers['content-security-policy'];
-            delete proxyRes.headers['frame-ancestors'];
-        },
-        onError: (err, req, res) => {
-            res.status(500).send('Proxy error encountered. Try refreshing or re-entering the address.');
-        }
-    })(req, res, next);
+        })(req, res, next);
+    } catch (e) {
+        res.status(400).send('Invalid URL format');
+    }
 });
 
-// 4. Catch-All Route for Relative Site Assets/Sub-paths
-app.use('*', (req, res, next) => {
-    if (req.originalUrl.startsWith('/fetch')) return next();
-    
-    createProxyMiddleware({
-        target: currentTargetHost,
-        changeOrigin: true,
-        onProxyRes: (proxyRes) => {
-            delete proxyRes.headers['x-frame-options'];
-            delete proxyRes.headers['content-security-policy'];
-        }
-    })(req, res, next);
+// Fallback for unhandled routes
+app.use((req, res) => {
+    res.status(404).send('Not found. Return to root portal.');
 });
 
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+app
