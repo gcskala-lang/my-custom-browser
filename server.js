@@ -12,7 +12,7 @@ app.use(basicAuth({
 }));
 
 // 2. Main Web Interface (Loads target site inside an iframe)
-app.get('/', (req, me) => {
+app.get('/', (req, res) => {
     const targetUrl = req.query.url || 'https://www.google.com';
     res.send(`
         <!DOCTYPE html>
