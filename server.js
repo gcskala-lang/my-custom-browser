@@ -5,15 +5,13 @@ const basicAuth = require('express-basic-auth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-let currentTargetHost = 'https://www.google.com';
+let currentTargetHost = 'https://www.amazon.com';
 
-// 1. Password Protection
 app.use(basicAuth({
     users: { 'admin': 'MySecretPassword123' },
     challenge: true
 }));
 
-// 2. Main Portal Shell with Navigation & Interceptor Script
 app.get('/', (req, res) => {
     let targetUrl = req.query.url || currentTargetHost;
     if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
@@ -27,24 +25,27 @@ app.get('/', (req, res) => {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>My Portal</title>
+            <title>Secure Proxy Portal</title>
             <style>
                 * { box-sizing: border-box; }
-                body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: system-ui, sans-serif; background: #111; }
-                #nav { height: 44px; background: #1a1a1a; display: flex; align-items: center; padding: 0 12px; gap: 8px; border-bottom: 1px solid #333; }
-                #urlInput { flex: 1; padding: 7px 12px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 6px; font-size: 14px; outline: none; }
-                #urlInput:focus { border-color: #007bff; }
-                button { padding: 7px 16px; background: #007bff; color: white; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 14px; }
-                button:hover { background: #0056b3; }
-                iframe { width: 100%; height: calc(100% - 44px); border: none; background: #fff; }
+                body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; }
+                #nav { height: 52px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); display: flex; align-items: center; padding: 0 16px; gap: 10px; border-bottom: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
+                #urlInput { flex: 1; padding: 8px 14px; background: #1e293b; color: #f8fafc; border: 1px solid #475569; border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+                #urlInput:focus { border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2); }
+                button { padding: 8px 18px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+                button:hover { background: #0369a1; }
+                .frame-container { width: 100%; height: calc(100% - 52px); background: #ffffff; position: relative; }
+                iframe { width: 100%; height: 100%; border: none; background: #fff; }
             </style>
         </head>
         <body>
             <div id="nav">
-                <input type="text" id="urlInput" value="${targetUrl}" placeholder="Enter website address..." />
-                <button onclick="navigate()">Go</button>
+                <input type="text" id="urlInput" value="${targetUrl}" placeholder="Enter website address (e.g. https://amazon.com)..." />
+                <button onclick="navigate()">Browse</button>
             </div>
-            <iframe id="siteFrame" src="/fetch?url=${encodeURIComponent(targetUrl)}"></iframe>
+            <div class="frame-container">
+                <iframe id="siteFrame" src="/fetch?url=${encodeURIComponent(targetUrl)}"></iframe>
+            </div>
             <script>
                 function navigate() {
                     let input = document.getElementById('urlInput').value.trim();
@@ -59,23 +60,12 @@ app.get('/', (req, res) => {
                 document.getElementById('urlInput').addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') navigate();
                 });
-
-                // Sync top bar address when iframe navigates internally
-                const iframe = document.getElementById('siteFrame');
-                iframe.addEventListener('load', function() {
-                    try {
-                        // Attempt to update input box if same-origin / proxied
-                        let iframeWindow = iframe.contentWindow;
-                        // If cross-origin restrictions block inner URL reading, we fallback gracefully
-                    } catch (e) {}
-                });
             </script>
         </body>
         </html>
     `);
 });
 
-// 3. Dedicated Proxy Route for Main Navigation & Full URLs
 app.use('/fetch', (req, res, next) => {
     let targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('No target URL provided');
@@ -93,23 +83,30 @@ app.use('/fetch', (req, res, next) => {
             changeOrigin: true,
             secure: false,
             pathRewrite: () => parsed.pathname + parsed.search,
+            onProxyReq: (proxyReq) => {
+                proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+                proxyReq.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8');
+                proxyReq.setHeader('Accept-Language', 'en-US,en;q=0.5');
+                proxyReq.removeHeader('Sec-Ch-Ua');
+                proxyReq.removeHeader('Sec-Ch-Ua-Mobile');
+                proxyReq.removeHeader('Sec-Ch-Ua-Platform');
+            },
             onProxyRes: (proxyRes) => {
                 delete proxyRes.headers['x-frame-options'];
                 delete proxyRes.headers['content-security-policy'];
+                delete proxyRes.headers['frame-ancestors'];
             },
             onError: (err, req, res) => {
-                res.status(502).send('Proxy connection failed.');
+                res.status(502).send('Proxy connection failed or site refused connection.');
             }
         });
         return proxy(req, res, next);
     } catch (e) {
-        return res.status(400).send('Invalid URL format');
+        res.status(400).send('Invalid URL format');
     }
 });
 
-// 4. Fallback Proxy for Assets and Relative Sub-Paths
 app.use((req, res, next) => {
-    // If someone tries to search directly via a relative path query, redirect them cleanly to Google search through /fetch
     if (req.url.startsWith('/search') || req.url.startsWith('/s?')) {
         let fullSearchUrl = currentTargetHost + req.originalUrl;
         return res.redirect('/fetch?url=' + encodeURIComponent(fullSearchUrl));
@@ -119,6 +116,10 @@ app.use((req, res, next) => {
         target: currentTargetHost,
         changeOrigin: true,
         secure: false,
+        onProxyReq: (proxyReq) => {
+            proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+            proxyReq.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8');
+        },
         onProxyRes: (proxyRes) => {
             delete proxyRes.headers['x-frame-options'];
             delete proxyRes.headers['content-security-policy'];
