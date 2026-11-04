@@ -11,7 +11,7 @@ app.use(basicAuth({
     challenge: true
 }));
 
-// 2. Main Web Interface (Loads target site inside an iframe)
+// 2. Main Web Interface Shell
 app.get('/', (req, res) => {
     const targetUrl = req.query.url || 'https://www.google.com';
     res.send(`
@@ -29,14 +29,16 @@ app.get('/', (req, res) => {
         </head>
         <body>
             <div id="nav">
-                <input type="text" id="urlInput" value="${targetUrl}" placeholder="Enter website URL..." />
+                <input type="text" id="urlInput" value="${targetUrl}" placeholder="Enter website URL (e.g. https://example.com)..." />
                 <button onclick="navigate()">Go</button>
             </div>
             <iframe id="siteFrame" src="/fetch?url=${encodeURIComponent(targetUrl)}"></iframe>
             <script>
                 function navigate() {
                     let url = document.getElementById('urlInput').value;
-                    if (!url.startsWith('http')) url = 'https://' + url;
+                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                        url = 'https://' + url;
+                    }
                     document.getElementById('siteFrame').src = '/fetch?url=' + encodeURIComponent(url);
                 }
             </script>
@@ -45,7 +47,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// 3. Dynamic Proxy Middleware
+// 3. Main Proxy Endpoint
 app.use('/fetch', (req, res, next) => {
     const target = req.query.url;
     if (!target) return res.status(400).send('No target URL provided');
@@ -59,6 +61,11 @@ app.use('/fetch', (req, res, next) => {
             delete proxyRes.headers['content-security-policy'];
         }
     })(req, res, next);
+});
+
+// 4. Catch-All Route for Relative Links & Redirects
+app.get('*', (req, res) => {
+    res.redirect('/');
 });
 
 app.listen(PORT, '0.0.0.0', () => console.log(`Server listening on port ${PORT}`));
