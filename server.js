@@ -5,7 +5,8 @@ const basicAuth = require('express-basic-auth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-let currentTargetHost = 'https://www.amazon.com';
+// Set DuckDuckGo as the default startup page
+let currentTargetHost = 'https://duckduckgo.com';
 
 app.use(basicAuth({
     users: { 'admin': 'MySecretPassword123' },
@@ -40,8 +41,8 @@ app.get('/', (req, res) => {
         </head>
         <body>
             <div id="nav">
-                <input type="text" id="urlInput" value="${targetUrl}" placeholder="Enter website address (e.g. https://amazon.com)..." />
-                <button onclick="navigate()">Browse</button>
+                <input type="text" id="urlInput" value="${targetUrl}" placeholder="Enter website address or search query..." />
+                <button onclick="navigate()">Go</button>
             </div>
             <div class="frame-container">
                 <iframe id="siteFrame" src="/fetch?url=${encodeURIComponent(targetUrl)}"></iframe>
@@ -50,9 +51,14 @@ app.get('/', (req, res) => {
                 function navigate() {
                     let input = document.getElementById('urlInput').value.trim();
                     if (!input) return;
-                    if (!input.startsWith('http://') && !input.startsWith('https://')) {
+                    
+                    // If it doesn't look like a URL (no dots/spaces like a domain), turn it into a DuckDuckGo search query automatically!
+                    if (!input.includes('.') && !input.startsWith('http://') && !input.startsWith('https://')) {
+                        input = 'https://duckduckgo.com/?q=' + encodeURIComponent(input);
+                    } else if (!input.startsWith('http://') && !input.startsWith('https://')) {
                         input = 'https://' + input;
                     }
+
                     document.getElementById('urlInput').value = input;
                     document.getElementById('siteFrame').src = '/fetch?url=' + encodeURIComponent(input);
                 }
@@ -107,7 +113,7 @@ app.use('/fetch', (req, res, next) => {
 });
 
 app.use((req, res, next) => {
-    if (req.url.startsWith('/search') || req.url.startsWith('/s?')) {
+    if (req.url.startsWith('/search') || req.url.startsWith('/s?') || req.url.startsWith('/html')) {
         let fullSearchUrl = currentTargetHost + req.originalUrl;
         return res.redirect('/fetch?url=' + encodeURIComponent(fullSearchUrl));
     }
