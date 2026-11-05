@@ -2,9 +2,9 @@
   "name": "math2learn",
   "version": "1.0.0",
   "type": "module",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "@titaniumnetwork-dev/ultraviolet": "^3.2.10",
