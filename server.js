@@ -20,7 +20,7 @@ const authMiddleware = basicAuth({
     realm: 'Custom Browser Portal'
 });
 
-// Serve the compiled Ultraviolet dist files from node_modules
+// Serve the compiled Ultraviolet dist files from node_modules (exposes sw.js, uv.bundle.js, etc.)
 app.use('/uv/', express.static(path.join(uvPath, '../dist')));
 
 // Protect the main frontend static files with Basic Auth
