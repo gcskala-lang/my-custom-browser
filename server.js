@@ -14,7 +14,7 @@ app.use(basicAuth({
     challenge: true
 }));
 
-// Crucial: Serve uv.sw.js with the mandatory Service-Worker-Allowed header
+// Serve uv.sw.js with the mandatory Service-Worker-Allowed header
 app.get('/uv/uv.sw.js', (req, res) => {
     res.setHeader('Service-Worker-Allowed', '/');
     res.sendFile(path.join(uvPath, 'uv.sw.js'));
@@ -23,7 +23,7 @@ app.get('/uv/uv.sw.js', (req, res) => {
 // Serve all other Ultraviolet static assets directly from node_modules
 app.use('/uv/', express.static(uvPath));
 
-// Main Portal UI
+// Main Portal UI with Async Service Worker Wait Logic
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -75,11 +75,15 @@ app.get('/', (req, res) => {
                     sw: '/uv/uv.sw.js',
                 };
 
+                let swReady = false;
+
                 async function registerSW() {
                     if (!navigator.serviceWorker) return;
                     try {
                         await navigator.serviceWorker.register('/uv/uv.sw.js', { scope: __uv$config.prefix });
-                        console.log('Service worker registered successfully!');
+                        await navigator.serviceWorker.ready;
+                        swReady = true;
+                        console.log('Service worker ready and controlling scope!');
                     } catch (e) {
                         console.error('SW registration failed:', e);
                     }
@@ -87,7 +91,12 @@ app.get('/', (req, res) => {
 
                 registerSW();
 
-                function loadSite(url) {
+                async function loadSite(url) {
+                    // Ensure service worker is fully active before loading the iframe
+                    if (!swReady) {
+                        await navigator.serviceWorker.ready;
+                        swReady = true;
+                    }
                     document.getElementById('urlInput').value = url;
                     let proxiedUrl = __uv$config.prefix + __uv$config.encodeUrl(url);
                     document.getElementById('siteFrame').src = proxiedUrl;
@@ -111,7 +120,8 @@ app.get('/', (req, res) => {
                     if (e.key === 'Enter') navigate();
                 });
 
-                window.onload = () => {
+                window.onload = async () => {
+                    await registerSW();
                     loadSite('https://search.brave.com');
                 };
             </script>
