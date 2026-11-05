@@ -5,16 +5,16 @@ const basicAuth = require('express-basic-auth');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-let currentTargetHost = 'https://html.duckduckgo.com';
+let currentTargetHost = 'https://search.brave.com';
 
-// Secure Password Protection (Username: admin, Password: MySecretPassword123)
+// Password Protection (Username: admin, Password: MySecretPassword123)
 app.use(basicAuth({
     users: { 'admin': 'MySecretPassword123' },
     challenge: true
 }));
 
 app.get('/', (req, res) => {
-    let targetUrl = req.query.url || 'https://html.duckduckgo.com/html/';
+    let targetUrl = req.query.url || 'https://search.brave.com';
     if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
         targetUrl = 'https://' + targetUrl;
     }
@@ -26,27 +26,30 @@ app.get('/', (req, res) => {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Secure Private Browser</title>
+            <title>Math2Learn Portal</title>
             <style>
                 * { box-sizing: border-box; }
-                body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #090d16; }
-                #nav { height: 54px; background: #111827; display: flex; align-items: center; padding: 0 12px; gap: 8px; border-bottom: 1px solid #1f2937; }
-                #urlInput { flex: 1; padding: 8px 14px; background: #030712; color: #f3f4f6; border: 1px solid #374151; border-radius: 6px; font-size: 14px; outline: none; }
-                #urlInput:focus { border-color: #3b82f6; }
-                button { padding: 8px 14px; background: #1f2937; color: #f3f4f6; border: 1px solid #374151; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 13px; transition: background 0.15s; }
+                body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; }
+                #nav { height: 56px; background: #111827; display: flex; align-items: center; padding: 0 14px; gap: 8px; border-bottom: 1px solid #1f2937; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+                .nav-group { display: flex; gap: 6px; }
+                #urlInput { flex: 1; padding: 9px 14px; background: #030712; color: #f3f4f6; border: 1px solid #374151; border-radius: 8px; font-size: 14px; outline: none; }
+                #urlInput:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+                button { padding: 9px 14px; background: #1f2937; color: #f3f4f6; border: 1px solid #374151; border-radius: 8px; font-weight: 500; cursor: pointer; font-size: 13px; transition: background 0.15s; }
                 button:hover { background: #374151; }
                 #goBtn { background: #2563eb; border-color: #1d4ed8; color: #ffffff; }
                 #goBtn:hover { background: #1d4ed8; }
-                .frame-container { width: 100%; height: calc(100% - 54px); background: #ffffff; position: relative; }
+                .frame-container { width: 100%; height: calc(100% - 56px); background: #ffffff; position: relative; }
                 iframe { width: 100%; height: 100%; border: none; background: #fff; }
             </style>
         </head>
         <body>
             <div id="nav">
-                <button onclick="loadPreset('https://html.duckduckgo.com/html/')">🔒 DuckDuckGo</button>
-                <button onclick="loadPreset('https://www.wikipedia.org')">📖 Wikipedia</button>
-                <button onclick="loadPreset('https://news.ycombinator.com')">📰 Tech News</button>
-                <input type="text" id="urlInput" value="${targetUrl}" placeholder="Search securely or enter URL..." />
+                <div class="nav-group">
+                    <button onclick="loadPreset('https://search.brave.com')">🦁 Brave Search</button>
+                    <button onclick="loadPreset('https://en.wikipedia.org')">📖 Wikipedia</button>
+                    <button onclick="loadPreset('https://news.ycombinator.com')">📰 Tech News</button>
+                </div>
+                <input type="text" id="urlInput" value="${targetUrl}" placeholder="Search web or enter URL..." />
                 <button id="goBtn" onclick="navigate()">Go</button>
             </div>
             <div class="frame-container">
@@ -63,7 +66,7 @@ app.get('/', (req, res) => {
                     if (!input) return;
                     
                     if (!input.includes('.') && !input.startsWith('http://') && !input.startsWith('https://')) {
-                        input = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(input);
+                        input = 'https://search.brave.com/search?q=' + encodeURIComponent(input);
                     } else if (!input.startsWith('http://') && !input.startsWith('https://')) {
                         input = 'https://' + input;
                     }
@@ -97,7 +100,6 @@ app.use('/fetch', (req, res, next) => {
             target: parsed.origin,
             changeOrigin: true,
             secure: false,
-            // Ensure path and search query (like ?q=...) are preserved correctly
             pathRewrite: () => parsed.pathname + parsed.search,
             onProxyReq: (proxyReq) => {
                 proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
@@ -109,7 +111,7 @@ app.use('/fetch', (req, res, next) => {
                 delete proxyRes.headers['frame-ancestors'];
             },
             onError: (err, req, res) => {
-                res.status(502).send('Proxy connection failed or site refused connection.');
+                res.status(502).send('Proxy connection failed or site blocked iframe embedding.');
             }
         });
         return proxy(req, res, next);
