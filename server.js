@@ -1,7 +1,7 @@
 import express from 'express';
 import http from 'http';
 import { createBareServer } from '@tomphttp/bare-server-node';
-import { uvPath } from '@mercuryworkshop/ultraviolet';
+import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 import { epoxyPath } from '@mercuryworkshop/epoxy-transport';
 import { libcurlPath } from '@mercuryworkshop/libcurl-transport';
 import { baremuxPath } from '@mercuryworkshop/bare-mux';
@@ -64,7 +64,6 @@ app.get('/', (req, res) => {
             <script src="/uv/uv.bundle.js"></script>
             <script src="/uv/uv.config.js"></script>
             <script>
-                // Initialize UV configuration
                 window.__uv$config = {
                     prefix: '/service/',
                     bare: '/bare/',
@@ -76,7 +75,6 @@ app.get('/', (req, res) => {
                     sw: '/uv/uv.sw.js',
                 };
 
-                // Register Service Worker for full DOM rewriting
                 async function registerSW() {
                     if (!navigator.serviceWorker) return;
                     try {
@@ -90,7 +88,6 @@ app.get('/', (req, res) => {
 
                 function loadSite(url) {
                     document.getElementById('urlInput').value = url;
-                    // Encode URL through UV prefix so it rewrites traffic safely
                     let proxiedUrl = __uv$config.prefix + __uv$config.encodeUrl(url);
                     document.getElementById('siteFrame').src = proxiedUrl;
                 }
@@ -113,7 +110,6 @@ app.get('/', (req, res) => {
                     if (e.key === 'Enter') navigate();
                 });
 
-                // Default initial load
                 window.onload = () => {
                     loadSite('https://search.brave.com');
                 };
@@ -123,7 +119,6 @@ app.get('/', (req, res) => {
     `);
 });
 
-// Route HTTP requests and socket upgrades to the Bare Server backend
 server.on('request', (req, res) => {
     if (bare.shouldRoute(req)) {
         bare.routeRequest(req, res);
