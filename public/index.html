@@ -92,7 +92,7 @@
             }
 
             try {
-                // Register service worker normally without forcing an out-of-bounds scope
+                // Register service worker correctly at the root path
                 if ('serviceWorker' in navigator) {
                     await navigator.serviceWorker.register('/uv/sw.js');
                 }
