@@ -2,9 +2,8 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createBareServer } from '@tomphttp/bare-server-node';
-import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 import basicAuth from 'express-basic-auth';
+import { createBareServer } from '@tomphttp/bare-server-node';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,24 +12,22 @@ const app = express();
 const server = http.createServer(app);
 const bare = createBareServer('/bare/');
 
-// Password Protection (Username: admin, Password: MySecretPassword123)
-app.use(basicAuth({
+// Basic Authentication configuration
+const authMiddleware = basicAuth({
     users: { 'admin': 'MySecretPassword123' },
-    challenge: true
-}));
+    challenge: true,
+    realm: 'Custom Browser Portal'
+});
 
-// Serve Ultraviolet core files from node_modules
-app.use('/uv/', express.static(uvPath));
+// Protect the static frontend files with Basic Auth
+app.use('/', authMiddleware, express.static(path.join(__dirname, 'public')));
 
-// Serve the frontend files from the public folder
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Unified server routing
-server.on('request', (req, res) => {
+// Handle Bare server routing for proxy traffic
+app.use((req, res, next) => {
     if (bare.shouldRoute(req)) {
         bare.routeRequest(req, res);
     } else {
-        app(req, res);
+        next();
     }
 });
 
@@ -42,7 +39,7 @@ server.on('upgrade', (req, socket, head) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Math2Learn portal running on port ${PORT}`);
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
