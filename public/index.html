@@ -71,10 +71,21 @@
         </form>
     </div>
 
-    <!-- Local Ultraviolet Scripts & Config -->
-    <script src="/uv/uv.bundle.js"></script>
-    <script src="/uv/uv.config.js"></script>
+    <!-- CDN-Hosted Ultraviolet Scripts & Config -->
+    <script src="https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.bundle.js"></script>
     <script>
+        window.__uv$config = {
+            prefix: '/service/',
+            bare: '/bare/',
+            encodeUrl: Ultraviolet.codec.xor.encode,
+            decodeUrl: Ultraviolet.codec.xor.decode,
+            handler: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.handler.js',
+            client: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.client.js',
+            bundle: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.bundle.js',
+            config: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.config.js',
+            sw: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.sw.js',
+        };
+
         const form = document.getElementById('proxy-form');
         const input = document.getElementById('url-input');
 
@@ -92,9 +103,11 @@
             }
 
             try {
-                // Register service worker correctly at the root path
+                // Register service worker using CDN URL with a root scope to prevent scope errors
                 if ('serviceWorker' in navigator) {
-                    await navigator.serviceWorker.register('/uv/sw.js');
+                    await navigator.serviceWorker.register('https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.sw.js', {
+                        scope: '/'
+                    });
                 }
 
                 // Route through the Ultraviolet proxy prefix
