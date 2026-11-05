@@ -1,5 +1,6 @@
 import express from 'express';
 import http from 'http';
+import path from 'path';
 import { createBareServer } from '@tomphttp/bare-server-node';
 import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 import basicAuth from 'express-basic-auth';
@@ -13,7 +14,13 @@ app.use(basicAuth({
     challenge: true
 }));
 
-// Serve Ultraviolet assets directly from node_modules
+// Crucial: Serve uv.sw.js with the mandatory Service-Worker-Allowed header
+app.get('/uv/uv.sw.js', (req, res) => {
+    res.setHeader('Service-Worker-Allowed', '/');
+    res.sendFile(path.join(uvPath, 'uv.sw.js'));
+});
+
+// Serve all other Ultraviolet static assets directly from node_modules
 app.use('/uv/', express.static(uvPath));
 
 // Main Portal UI
@@ -72,6 +79,7 @@ app.get('/', (req, res) => {
                     if (!navigator.serviceWorker) return;
                     try {
                         await navigator.serviceWorker.register('/uv/uv.sw.js', { scope: __uv$config.prefix });
+                        console.log('Service worker registered successfully!');
                     } catch (e) {
                         console.error('SW registration failed:', e);
                     }
@@ -112,7 +120,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// Create a single unified server instance to prevent request collisions
+// Unified server instance handling HTTP and WebSocket upgrades
 const server = http.createServer((req, res) => {
     if (bare.shouldRoute(req)) {
         bare.routeRequest(req, res);
@@ -131,5 +139,5 @@ server.on('upgrade', (req, socket, head) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Unified proxy server running smoothly on port ${PORT}`);
+    console.log(`Proxy server running smoothly on port ${PORT}`);
 });
