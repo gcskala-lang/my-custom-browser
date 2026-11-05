@@ -1,35 +1,39 @@
-const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const basicAuth = require('express-basic-auth');
+import express from 'express';
+import http from 'http';
+import { createBareServer } from '@tomphttp/bare-server-node';
+import { uvPath } from '@mercuryworkshop/ultraviolet';
+import { epoxyPath } from '@mercuryworkshop/epoxy-transport';
+import { libcurlPath } from '@mercuryworkshop/libcurl-transport';
+import { baremuxPath } from '@mercuryworkshop/bare-mux';
+import basicAuth from 'express-basic-auth';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const server = http.createServer(app);
+const bare = createBareServer('/bare/');
 
-let currentTargetHost = 'https://search.brave.com';
-
-// Password Protection (Username: admin, Password: MySecretPassword123)
+// Secure Password Protection (Username: admin, Password: MySecretPassword123)
 app.use(basicAuth({
     users: { 'admin': 'MySecretPassword123' },
     challenge: true
 }));
 
-app.get('/', (req, res) => {
-    let targetUrl = req.query.url || 'https://search.brave.com';
-    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-        targetUrl = 'https://' + targetUrl;
-    }
-    try {
-        currentTargetHost = new URL(targetUrl).origin;
-    } catch (e) {}
+// Serve Ultraviolet and transport assets directly from node_modules
+app.use('/uv/', express.static(uvPath));
+app.use('/epoxy/', express.static(epoxyPath));
+app.use('/libcurl/', express.static(libcurlPath));
+app.use('/baremux/', express.static(baremuxPath));
 
+// Main Portal UI with Service Worker and UV Rewriting Engine
+app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
+            <meta charset="UTF-8">
             <title>Math2Learn Portal</title>
             <style>
                 * { box-sizing: border-box; }
-                body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; }
+                body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f3f4f6; }
                 #nav { height: 56px; background: #111827; display: flex; align-items: center; padding: 0 14px; gap: 8px; border-bottom: 1px solid #1f2937; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
                 .nav-group { display: flex; gap: 6px; }
                 #urlInput { flex: 1; padding: 9px 14px; background: #030712; color: #f3f4f6; border: 1px solid #374151; border-radius: 8px; font-size: 14px; outline: none; }
@@ -45,96 +49,98 @@ app.get('/', (req, res) => {
         <body>
             <div id="nav">
                 <div class="nav-group">
-                    <button onclick="loadPreset('https://search.brave.com')">🦁 Brave Search</button>
-                    <button onclick="loadPreset('https://en.wikipedia.org')">📖 Wikipedia</button>
-                    <button onclick="loadPreset('https://news.ycombinator.com')">📰 Tech News</button>
+                    <button onclick="loadSite('https://search.brave.com')">🦁 Brave</button>
+                    <button onclick="loadSite('https://duckduckgo.com')">🦆 DuckDuckGo</button>
+                    <button onclick="loadSite('https://en.wikipedia.org')">📖 Wikipedia</button>
                 </div>
-                <input type="text" id="urlInput" value="${targetUrl}" placeholder="Search web or enter URL..." />
+                <input type="text" id="urlInput" placeholder="Search web or enter URL..." />
                 <button id="goBtn" onclick="navigate()">Go</button>
             </div>
             <div class="frame-container">
-                <iframe id="siteFrame" src="/fetch?url=${encodeURIComponent(targetUrl)}"></iframe>
+                <iframe id="siteFrame"></iframe>
             </div>
+
+            <!-- Ultraviolet Core Scripts -->
+            <script src="/uv/uv.bundle.js"></script>
+            <script src="/uv/uv.config.js"></script>
             <script>
-                function loadPreset(url) {
+                // Initialize UV configuration
+                window.__uv$config = {
+                    prefix: '/service/',
+                    bare: '/bare/',
+                    encodeUrl: Ultraviolet.codec.xor.encode,
+                    decodeUrl: Ultraviolet.codec.xor.decode,
+                    handler: '/uv/uv.handler.js',
+                    bundle: '/uv/uv.bundle.js',
+                    config: '/uv/uv.config.js',
+                    sw: '/uv/uv.sw.js',
+                };
+
+                // Register Service Worker for full DOM rewriting
+                async function registerSW() {
+                    if (!navigator.serviceWorker) return;
+                    try {
+                        await navigator.serviceWorker.register('/uv/uv.sw.js', { scope: __uv$config.prefix });
+                    } catch (e) {
+                        console.error('SW registration failed:', e);
+                    }
+                }
+
+                registerSW();
+
+                function loadSite(url) {
                     document.getElementById('urlInput').value = url;
-                    document.getElementById('siteFrame').src = '/fetch?url=' + encodeURIComponent(url);
+                    // Encode URL through UV prefix so it rewrites traffic safely
+                    let proxiedUrl = __uv$config.prefix + __uv$config.encodeUrl(url);
+                    document.getElementById('siteFrame').src = proxiedUrl;
                 }
 
                 function navigate() {
                     let input = document.getElementById('urlInput').value.trim();
                     if (!input) return;
-                    
+
+                    let targetUrl = input;
                     if (!input.includes('.') && !input.startsWith('http://') && !input.startsWith('https://')) {
-                        input = 'https://search.brave.com/search?q=' + encodeURIComponent(input);
+                        targetUrl = 'https://search.brave.com/search?q=' + encodeURIComponent(input);
                     } else if (!input.startsWith('http://') && !input.startsWith('https://')) {
-                        input = 'https://' + input;
+                        targetUrl = 'https://' + input;
                     }
 
-                    document.getElementById('urlInput').value = input;
-                    document.getElementById('siteFrame').src = '/fetch?url=' + encodeURIComponent(input);
+                    loadSite(targetUrl);
                 }
 
                 document.getElementById('urlInput').addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') navigate();
                 });
+
+                // Default initial load
+                window.onload = () => {
+                    loadSite('https://search.brave.com');
+                };
             </script>
         </body>
         </html>
     `);
 });
 
-app.use('/fetch', (req, res, next) => {
-    let targetUrl = req.query.url;
-    if (!targetUrl) return res.status(400).send('No target URL provided');
-
-    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
-        targetUrl = 'https://' + targetUrl;
-    }
-
-    try {
-        const parsed = new URL(targetUrl);
-        currentTargetHost = parsed.origin;
-        
-        const proxy = createProxyMiddleware({
-            target: parsed.origin,
-            changeOrigin: true,
-            secure: false,
-            pathRewrite: () => parsed.pathname + parsed.search,
-            onProxyReq: (proxyReq) => {
-                proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
-                proxyReq.setHeader('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8');
-            },
-            onProxyRes: (proxyRes) => {
-                delete proxyRes.headers['x-frame-options'];
-                delete proxyRes.headers['content-security-policy'];
-                delete proxyRes.headers['frame-ancestors'];
-            },
-            onError: (err, req, res) => {
-                res.status(502).send('Proxy connection failed or site blocked iframe embedding.');
-            }
-        });
-        return proxy(req, res, next);
-    } catch (e) {
-        return res.status(400).send('Invalid URL format');
+// Route HTTP requests and socket upgrades to the Bare Server backend
+server.on('request', (req, res) => {
+    if (bare.shouldRoute(req)) {
+        bare.routeRequest(req, res);
+    } else {
+        app(req, res);
     }
 });
 
-app.use((req, res, next) => {
-    createProxyMiddleware({
-        target: currentTargetHost,
-        changeOrigin: true,
-        secure: false,
-        onProxyRes: (proxyRes) => {
-            delete proxyRes.headers['x-frame-options'];
-            delete proxyRes.headers['content-security-policy'];
-        },
-        onError: (err, req, res) => {
-            res.status(404).send('Resource not found.');
-        }
-    })(req, res, next);
+server.on('upgrade', (req, socket, head) => {
+    if (bare.shouldRoute(req)) {
+        bare.routeUpgrade(req, socket, head);
+    } else {
+        socket.destroy();
+    }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server successfully running on port ${PORT}`);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Math2Learn Ultraviolet proxy engine running on port ${PORT}`);
 });
