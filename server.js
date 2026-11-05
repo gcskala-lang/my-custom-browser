@@ -5,7 +5,6 @@ import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 import basicAuth from 'express-basic-auth';
 
 const app = express();
-const server = http.createServer(app);
 const bare = createBareServer('/bare/');
 
 // Secure Password Protection (Username: admin, Password: MySecretPassword123)
@@ -17,7 +16,7 @@ app.use(basicAuth({
 // Serve Ultraviolet assets directly from node_modules
 app.use('/uv/', express.static(uvPath));
 
-// Main PeteZah-Style Portal UI
+// Main Portal UI
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -113,8 +112,8 @@ app.get('/', (req, res) => {
     `);
 });
 
-// Route HTTP requests and WebSocket upgrades straight into the internal Bare Server
-server.on('request', (req, res) => {
+// Create a single unified server instance to prevent request collisions
+const server = http.createServer((req, res) => {
     if (bare.shouldRoute(req)) {
         bare.routeRequest(req, res);
     } else {
@@ -131,6 +130,6 @@ server.on('upgrade', (req, socket, head) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`All-in-one proxy portal running successfully on port ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Unified proxy server running smoothly on port ${PORT}`);
 });
