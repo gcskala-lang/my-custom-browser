@@ -2,27 +2,22 @@ import express from 'express';
 import http from 'http';
 import { createBareServer } from '@tomphttp/bare-server-node';
 import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
-import { epoxyPath } from '@mercuryworkshop/epoxy-transport';
-import { libcurlPath } from '@mercuryworkshop/libcurl-transport';
-import { baremuxPath } from '@mercuryworkshop/bare-mux/node';
 import basicAuth from 'express-basic-auth';
 
 const app = express();
 const server = http.createServer(app);
 const bare = createBareServer('/bare/');
 
-// Password Protection (Username: admin, Password: MySecretPassword123)
+// Secure Password Protection (Username: admin, Password: MySecretPassword123)
 app.use(basicAuth({
     users: { 'admin': 'MySecretPassword123' },
     challenge: true
 }));
 
-// Serve Ultraviolet assets from node_modules
+// Serve Ultraviolet assets directly from node_modules
 app.use('/uv/', express.static(uvPath));
-app.use('/epoxy/', express.static(epoxyPath));
-app.use('/libcurl/', express.static(libcurlPath));
-app.use('/baremux/', express.static(baremuxPath));
 
+// Main PeteZah-Style Portal UI
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -59,6 +54,7 @@ app.get('/', (req, res) => {
                 <iframe id="siteFrame"></iframe>
             </div>
 
+            <!-- Ultraviolet Core Scripts -->
             <script src="/uv/uv.bundle.js"></script>
             <script src="/uv/uv.config.js"></script>
             <script>
@@ -117,6 +113,7 @@ app.get('/', (req, res) => {
     `);
 });
 
+// Route HTTP requests and WebSocket upgrades straight into the internal Bare Server
 server.on('request', (req, res) => {
     if (bare.shouldRoute(req)) {
         bare.routeRequest(req, res);
@@ -135,5 +132,5 @@ server.on('upgrade', (req, socket, head) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Math2Learn Ultraviolet proxy engine running on port ${PORT}`);
+    console.log(`All-in-one proxy portal running successfully on port ${PORT}`);
 });
