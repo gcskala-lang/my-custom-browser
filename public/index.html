@@ -71,22 +71,10 @@
         </form>
     </div>
 
-    <!-- CDN-Hosted Ultraviolet Scripts & Config -->
-    <script src="https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.bundle.js"></script>
+    <!-- Local Ultraviolet Scripts & Config -->
+    <script src="/uv/uv.bundle.js"></script>
+    <script src="/uv/uv.config.js"></script>
     <script>
-        // Define config inline so it doesn't look for external config files
-        window.__uv$config = {
-            prefix: '/service/',
-            bare: '/bare/',
-            encodeUrl: Ultraviolet.codec.xor.encode,
-            decodeUrl: Ultraviolet.codec.xor.decode,
-            handler: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.handler.js',
-            client: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.client.js',
-            bundle: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.bundle.js',
-            config: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.config.js',
-            sw: 'https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.sw.js',
-        };
-
         const form = document.getElementById('proxy-form');
         const input = document.getElementById('url-input');
 
@@ -104,14 +92,14 @@
             }
 
             try {
-                // Register the Ultraviolet Service Worker from CDN
+                // Register service worker from your own domain with root scope '/'
                 if ('serviceWorker' in navigator) {
-                    await navigator.serviceWorker.register('https://cdn.jsdelivr.net/npm/@titaniumnetwork-dev/ultraviolet@3.2.7/dist/uv.sw.js', {
-                        scope: __uv$config.prefix
+                    await navigator.serviceWorker.register('/uv/sw.js', {
+                        scope: '/'
                     });
                 }
 
-                // Route through the Ultraviolet proxy
+                // Route through the Ultraviolet proxy prefix
                 window.location.href = __uv$config.prefix + __uv$config.encodeUrl(url);
             } catch (err) {
                 console.error('Failed to register service worker or proxy URL:', err);
