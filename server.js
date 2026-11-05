@@ -97,6 +97,7 @@ app.use('/fetch', (req, res, next) => {
             target: parsed.origin,
             changeOrigin: true,
             secure: false,
+            // Ensure path and search query (like ?q=...) are preserved correctly
             pathRewrite: () => parsed.pathname + parsed.search,
             onProxyReq: (proxyReq) => {
                 proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
@@ -113,7 +114,7 @@ app.use('/fetch', (req, res, next) => {
         });
         return proxy(req, res, next);
     } catch (e) {
-        res.status(400).send('Invalid URL format');
+        return res.status(400).send('Invalid URL format');
     }
 });
 
