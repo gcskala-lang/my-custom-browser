@@ -1,13 +1,12 @@
 {
-  "name": "my-custom-browser",
+  "name": "math2learn",
   "version": "1.0.0",
-  "description": "Secure proxy browser web app",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
+    "express": "^4.18.2",
     "express-basic-auth": "^1.2.1",
     "http-proxy-middleware": "^2.0.6"
   }
