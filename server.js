@@ -4,7 +4,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import basicAuth from 'express-basic-auth';
 import { createBareServer } from '@tomphttp/bare-server-node';
-import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,9 +18,6 @@ const authMiddleware = basicAuth({
     challenge: true,
     realm: 'Custom Browser Portal'
 });
-
-// Serve the compiled Ultraviolet dist files from node_modules (exposes sw.js, uv.bundle.js, etc.)
-app.use('/uv/', express.static(path.join(uvPath, '../dist')));
 
 // Protect the main frontend static files with Basic Auth
 app.use('/', authMiddleware, express.static(path.join(__dirname, 'public')));
