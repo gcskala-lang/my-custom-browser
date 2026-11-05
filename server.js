@@ -4,6 +4,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import basicAuth from 'express-basic-auth';
 import { createBareServer } from '@tomphttp/bare-server-node';
+import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
+import { epoxyPath } from '@mercuryworkshop/epoxy-transport';
+import { baremuxPath } from '@mercuryworkshop/bare-mux';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,7 +22,12 @@ const authMiddleware = basicAuth({
     realm: 'Custom Browser Portal'
 });
 
-// Protect the static frontend files with Basic Auth
+// Serve Ultraviolet core assets from node_modules
+app.use('/uv/', express.static(uvPath));
+app.use('/epoxy/', express.static(epoxyPath));
+app.use('/baremux/', express.static(baremuxPath));
+
+// Protect the main frontend static files with Basic Auth
 app.use('/', authMiddleware, express.static(path.join(__dirname, 'public')));
 
 // Handle Bare server routing for proxy traffic
