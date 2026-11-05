@@ -13,4 +13,6 @@
     "@titaniumnetwork-dev/ultraviolet": "^3.2.10",
     "@tomphttp/bare-server-node": "^2.0.1",
     "express": "^4.19.2",
-    "express-basic-auth":
+    "express-basic-auth": "^1.2.1"
+  }
+}
