@@ -92,11 +92,9 @@
             }
 
             try {
-                // Register service worker using the configuration prefix scope
+                // Register service worker normally without forcing an out-of-bounds scope
                 if ('serviceWorker' in navigator) {
-                    await navigator.serviceWorker.register('/uv/sw.js', {
-                        scope: __uv$config.prefix
-                    });
+                    await navigator.serviceWorker.register('/uv/sw.js');
                 }
 
                 // Route through the Ultraviolet proxy prefix
