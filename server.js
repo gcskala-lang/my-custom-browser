@@ -11,23 +11,22 @@ const app = express();
 const server = http.createServer(app);
 const bare = createBareServer('/bare/');
 
-// Secure Password Protection (Username: admin, Password: MySecretPassword123)
+// Password Protection (Username: admin, Password: MySecretPassword123)
 app.use(basicAuth({
     users: { 'admin': 'MySecretPassword123' },
     challenge: true
 }));
 
-// Serve Ultraviolet and transport assets directly from node_modules
+// Serve Ultraviolet assets from node_modules
 app.use('/uv/', express.static(uvPath));
 app.use('/epoxy/', express.static(epoxyPath));
 app.use('/libcurl/', express.static(libcurlPath));
 app.use('/baremux/', express.static(baremuxPath));
 
-// Main Portal UI with Service Worker and UV Rewriting Engine
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
-        html lang="en">
+        <html lang="en">
         <head>
             <meta charset="UTF-8">
             <title>Math2Learn Portal</title>
@@ -60,7 +59,6 @@ app.get('/', (req, res) => {
                 <iframe id="siteFrame"></iframe>
             </div>
 
-            <!-- Ultraviolet Core Scripts -->
             <script src="/uv/uv.bundle.js"></script>
             <script src="/uv/uv.config.js"></script>
             <script>
