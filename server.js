@@ -4,7 +4,7 @@ import { createBareServer } from '@tomphttp/bare-server-node';
 import { uvPath } from '@titaniumnetwork-dev/ultraviolet';
 import { epoxyPath } from '@mercuryworkshop/epoxy-transport';
 import { libcurlPath } from '@mercuryworkshop/libcurl-transport';
-import { baremuxPath } from '@mercuryworkshop/bare-mux';
+import { baremuxPath } from '@mercuryworkshop/bare-mux/node';
 import basicAuth from 'express-basic-auth';
 
 const app = express();
@@ -27,7 +27,7 @@ app.use('/baremux/', express.static(baremuxPath));
 app.get('/', (req, res) => {
     res.send(`
         <!DOCTYPE html>
-        <html lang="en">
+        html lang="en">
         <head>
             <meta charset="UTF-8">
             <title>Math2Learn Portal</title>
