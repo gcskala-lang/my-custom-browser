@@ -92,10 +92,10 @@
             }
 
             try {
-                // Register service worker from your own domain with root scope '/'
+                // Register service worker using the configuration prefix scope
                 if ('serviceWorker' in navigator) {
                     await navigator.serviceWorker.register('/uv/sw.js', {
-                        scope: '/'
+                        scope: __uv$config.prefix
                     });
                 }
 
