@@ -10,8 +10,6 @@
   "dependencies": {
     "@tomphttp/bare-server-node": "^2.0.6",
     "@titaniumnetwork-dev/ultraviolet": "^3.2.7",
-    "@mercuryworkshop/epoxy-transport": "^2.0.1",
-    "@mercuryworkshop/bare-mux": "^2.0.1",
     "express": "^4.19.2",
     "express-basic-auth": "^1.2.1"
   }
